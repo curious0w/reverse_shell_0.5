@@ -49,5 +49,5 @@ Dependências de desenvolvimento (opcionais): `pytest`, `flake8`, `mypy` (ver `r
 
 ## Imagens de detector de virus
 
-![aqui mostra quantos antivirus detectam o payload python, mostrando que o python é mais oculto do que o .C](images/imagem_do_payload_py.png)
-![aqui mostra quantos antivirus detectam o payload C.](images/imagem_do_payload_c.png)
+![aqui mostra quantos antivirus detectam o payload python, mostrando que o python é mais oculto do que o .C](codiguin/images/imagem_do_payload_py.png)
+![aqui mostra quantos antivirus detectam o payload C.](codiguin/images/imagem_do_payload_c.png)
