@@ -16,6 +16,9 @@
 - Aprimoração de ofuscação dos payloads
 - Melhor Design (lol)
 
+
+![aqui mostra o menu](NetFish/images/menu.png)
+
 # Resumo da Ferramenta
 Esta ferramenta é um utilitário em Python que fornece um menu interativo para gerar e gerenciar comandos/payloads (modo seguro — não executa payloads automaticamente) e inclui um ofuscador de código (`ofuscador.py`) para reduzir/embaralhar código Python.(obs: O criador do ofuscador python no momento é weijarz )
 
